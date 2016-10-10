@@ -218,22 +218,23 @@ td {
 				<td><b>My partition</b></td>
 				<td class="values"><%=myId%></td>
 			</tr>
-			<tr>
+			<!--<tr>
 				<td><b>List Other Nodes</b></td>
 				<td class="values">
 					<ul>
 					<%
-						for (int i = 0; i < net.getNumberNodes(); ++i) {
-							if (i != net.getMyPartition()) {
+						//for (int i = 0; i < net.getNumberNodes(); ++i) {
+						//	if (i != net.getMyPartition()) {
 					%>
-						<li><%=i%>=<%=net.getPeerLocation(i)%></li>
+						<li><%  // i= net.getPeerLocation(i)
+						%></li>
 						<%
-							}
-						}
+						//	}
+						//}
 						%>
 					</ul>
 					</td>
-				</tr>
+			</tr>-->
 
 		</table>
 	</div>
