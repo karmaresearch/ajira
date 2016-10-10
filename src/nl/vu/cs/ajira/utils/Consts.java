@@ -27,8 +27,7 @@ public class Consts {
 	public static final int STARTING_SIZE_FACTORY = 0;
 	public static final int N_ELEMENTS_FACTORY = 10000;
 
-	public static final int MIN_SIZE_TO_SEND = Math.min(64 * 1024,
-			TUPLES_CONTAINER_MAX_BUFFER_SIZE);
+	public static final int MIN_SIZE_TO_SEND = Math.min(64 * 1024, TUPLES_CONTAINER_MAX_BUFFER_SIZE);
 	public static final int MAX_SEGMENTS_RECEIVED = 8192;
 
 	public static final int MAX_TUPLE_SENDERS = 8;

@@ -3,6 +3,9 @@ package nl.vu.cs.ajira.chains;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import nl.vu.cs.ajira.Context;
 import nl.vu.cs.ajira.actions.ActionFactory;
 import nl.vu.cs.ajira.actions.support.Query;
@@ -14,11 +17,7 @@ import nl.vu.cs.ajira.datalayer.InputLayer;
 import nl.vu.cs.ajira.datalayer.TupleIterator;
 import nl.vu.cs.ajira.datalayer.buckets.BucketsLayer;
 import nl.vu.cs.ajira.mgmt.StatisticsCollector;
-import nl.vu.cs.ajira.net.NetworkLayer;
 import nl.vu.cs.ajira.storage.containers.WritableContainer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ChainHandler implements Runnable {
 
@@ -30,11 +29,12 @@ public class ChainHandler implements Runnable {
 	public static final int STATUS_FINISHED = 3;
 
 	private Context context = null;
-	private NetworkLayer net = null;
+	// private NetworkLayer net = null;
 	private WritableContainer<Chain> chainsToProcess = null;
 	private ActionFactory ap = null;
 	private StatisticsCollector stats = null;
 	private Chain currentChain = new Chain();
+	private ChainTerminator terminator = null;
 
 	private boolean submissionFailed;
 	private int status = STATUS_INACTIVE;
@@ -45,18 +45,18 @@ public class ChainHandler implements Runnable {
 
 	private boolean shouldStop;
 
-	ChainHandler(Context context) {
+	ChainHandler(Context context, ChainTerminator terminator) {
 		this.context = context;
-		this.net = context.getNetworkLayer();
-		this.chainsToProcess = context.getChainHandlerManager()
-				.getChainsToProcess();
+		// this.net = context.getNetworkLayer();
+		this.chainsToProcess = context.getChainHandlerManager().getChainsToProcess();
 		this.stats = context.getStatisticsCollector();
 		this.ap = context.getActionsProvider();
+		this.terminator = terminator;
 		actions = new ChainExecutor(this, context);
 	}
 
-	ChainHandler(Context context, Chain chain) {
-		this(context);
+	ChainHandler(Context context, ChainTerminator terminator, Chain chain) {
+		this(context, terminator);
 		singleChain = true;
 		chain.copyTo(this.currentChain);
 	}
@@ -122,8 +122,7 @@ public class ChainHandler implements Runnable {
 							// the ChainExecutor
 							BucketIterator bi = (BucketIterator) itr;
 							Bucket b = bi.getBucket();
-							Map<Long, List<Integer>> counters = b
-									.getAdditionalChildrenCounts();
+							Map<Long, List<Integer>> counters = b.getAdditionalChildrenCounts();
 							if (counters != null && counters.size() > 0) {
 								// Add them to the ChainExecutor
 								actions.addAndUpdateCounters(counters);
@@ -136,20 +135,21 @@ public class ChainHandler implements Runnable {
 
 				if (log.isDebugEnabled()) {
 					timeCycle = System.currentTimeMillis() - timeCycle;
-					log.debug("Chain " + currentChain.getChainId()
-							+ "runtime cycle: " + timeCycle);
+					log.debug("Chain " + currentChain.getChainId() + "runtime cycle: " + timeCycle);
 				}
 
-				stats.addCounter(currentChain.getSubmissionNode(),
-						currentChain.getSubmissionId(), "Chains Processed", 1);
+				stats.addCounter(currentChain.getSubmissionNode(), currentChain.getSubmissionId(), "Chains Processed",
+						1);
 
 			} finally {
 				input.releaseIterator(itr, actions);
 			}
 		}
 
-		if (net != null && !actions.isTransferedComputation()) {
-			net.signalChainTerminated(currentChain, actions.getNewChildren());
+		if (!actions.isTransferedComputation()) {
+			terminator.addChain(currentChain, actions.getNewChildren());
+			// net.signalChainTerminated(currentChain,
+			// actions.getNewChildren());
 		}
 	}
 
@@ -158,8 +158,7 @@ public class ChainHandler implements Runnable {
 	}
 
 	public void submissionFailed(int submissionId) {
-		if (currentChain != null
-				&& currentChain.getSubmissionId() == submissionId) {
+		if (currentChain != null && currentChain.getSubmissionId() == submissionId) {
 			submissionFailed = true;
 		}
 	}
@@ -182,7 +181,8 @@ public class ChainHandler implements Runnable {
 				// Broadcast all the nodes that a chain part of a job has
 				// failed.
 				log.error("chain failed, cancelling the job ...", e);
-				net.signalChainFailed(currentChain, e);
+				// net.signalChainFailed(currentChain, e);
+				terminator.addFailedChain(currentChain, e);
 			}
 			if (log.isDebugEnabled()) {
 				log.debug("Single chain handler done");
@@ -207,7 +207,8 @@ public class ChainHandler implements Runnable {
 				// Broadcast all the nodes that a chain part of a job has
 				// failed.
 				log.error("Chain failed. Cancelling the job ...", e);
-				net.signalChainFailed(currentChain, e);
+				terminator.addFailedChain(currentChain, e);
+				// net.signalChainFailed(currentChain, e);
 			} finally {
 				setStatus(STATUS_INACTIVE);
 			}

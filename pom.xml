@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+	<groupId>nl.vu.cs</groupId>
+    <artifactId>ajira</artifactId>
+    <version>0.3</version>
+
+    <dependencies>
+	<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+	<dependency>
+    	<groupId>org.slf4j</groupId>
+    	<artifactId>slf4j-api</artifactId>
+    	<version>1.7.21</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
+	<dependency>
+    	<groupId>ch.qos.logback</groupId>
+    	<artifactId>logback-classic</artifactId>
+    	<version>1.1.7</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.iq80.snappy/snappy -->
+	<dependency>
+    	<groupId>org.iq80.snappy</groupId>
+    	<artifactId>snappy</artifactId>
+    	<version>0.4</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-util -->
+	<dependency>
+    	<groupId>org.eclipse.jetty</groupId>
+    	<artifactId>jetty-util</artifactId>
+    	<version>9.3.12.v20160915</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-server -->
+	<dependency>
+    	<groupId>org.eclipse.jetty</groupId>
+    	<artifactId>jetty-server</artifactId>
+    	<version>9.3.12.v20160915</version>
+	</dependency>
+
+	<!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-servlet -->
+	<dependency>
+    	<groupId>org.eclipse.jetty</groupId>
+    	<artifactId>jetty-servlet</artifactId>
+    	<version>9.3.12.v20160915</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-jsp -->
+	<dependency>
+    	<groupId>org.eclipse.jetty</groupId>
+    	<artifactId>jetty-jsp</artifactId>
+    	<version>9.2.19.v20160908</version>
+	</dependency>
+            
+    </dependencies>    
+
+</project>

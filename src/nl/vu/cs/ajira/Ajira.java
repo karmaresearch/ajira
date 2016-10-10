@@ -17,6 +17,7 @@ import nl.vu.cs.ajira.buckets.CachedFilesMerger;
 import nl.vu.cs.ajira.buckets.WritableTuple;
 import nl.vu.cs.ajira.chains.ChainHandlerManager;
 import nl.vu.cs.ajira.chains.ChainNotifier;
+import nl.vu.cs.ajira.chains.ChainTerminator;
 import nl.vu.cs.ajira.data.types.DataProvider;
 import nl.vu.cs.ajira.datalayer.InputLayer;
 import nl.vu.cs.ajira.datalayer.InputLayerRegistry;
@@ -221,8 +222,17 @@ public class Ajira {
 				ap, dp, cache, conf);
 		notifier.init(globalContext);
 
+		/**** START SUBMISSION MANAGEMENT THREAD ****/
+		if (log.isDebugEnabled()) {
+			log.debug("Starting Termination chains thread...");
+		}
+		ChainTerminator terminator = new ChainTerminator(globalContext);
+		Thread thread = new Thread(terminator);
+		thread.setName("Chain Terminator");
+		thread.start();
+
 		/**** START PROCESSING THREADS ****/
-		manager.setContext(globalContext);
+		manager.setContext(globalContext, terminator);
 		int nProcs = Runtime.getRuntime().availableProcessors();
 		if (nProcs > 2) {
 			nProcs /= 2;
@@ -237,7 +247,7 @@ public class Ajira {
 			if (log.isDebugEnabled()) {
 				log.debug("Starting Sorting Merge threads " + j + " ...");
 			}
-			Thread thread = new Thread(merger);
+			thread = new Thread(merger);
 			thread.setName("Merge sort " + j);
 			thread.start();
 		}
@@ -271,7 +281,7 @@ public class Ajira {
 			log.debug("Start housekeeping thread ...");
 		}
 		NodeHouseKeeper hk = new NodeHouseKeeper(globalContext);
-		Thread thread = new Thread(hk);
+		thread = new Thread(hk);
 		thread.setName("Housekeeping");
 		thread.setDaemon(true);
 		thread.start();
