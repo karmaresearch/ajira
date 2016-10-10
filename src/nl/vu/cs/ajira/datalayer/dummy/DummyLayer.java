@@ -69,7 +69,10 @@ public class DummyLayer extends InputLayer {
 	@Override
 	protected void load(Context context) throws IOException {
 		// Nothing to do here
-		myId = context.getNetworkLayer().getMyPartition();
+		if (context.isLocalMode())
+			myId = 0;
+		else
+			myId = context.getNetworkLayer().getMyPartition();
 	}
 
 	/**

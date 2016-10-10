@@ -19,6 +19,15 @@
 	Context context = (Context) request.getServletContext()
 			.getAttribute("context");
 	NetworkLayer net = context.getNetworkLayer();
+	int nnodes, myId;
+	if (net == null) {
+		nnodes = 1;
+		myId = 0;
+	} else {
+		nnodes = net.getNumberNodes();
+		myId = net.getMyPartition();
+	}
+
 	String message = (String) request.getSession().getAttribute(
 			"message");
 
@@ -195,45 +204,37 @@ td {
 	</div>
 
 	<%
-		if (net.getNumberNodes() > 1) {
+		if (nnodes > 1) {
 	%>
 	<div class="floatingBox">
 		<h2>Cluster Details</h2>
 		<table border="1">
 			<tr>
 				<td><b>Total # of nodes</b></td>
-				<td class="values"><%=net.getNumberNodes()%></td>
+				<td class="values"><%=nnodes%></td>
 			</tr>
 
 			<tr>
 				<td><b>My partition</b></td>
-				<td class="values"><%=net.getMyPartition()%></td>
+				<td class="values"><%=myId%></td>
 			</tr>
-			<tr>
-				<td><b>Am I the master?</b></td>
-				<td class="values"><%=net.isServer()%></td>
-			</tr>
-			<tr>
-				<td><b>Address Master Node</b></td>
-				<td class="values"><%=net.getServer()%></td>
-			</tr>
-
 			<tr>
 				<td><b>List Other Nodes</b></td>
 				<td class="values">
 					<ul>
-						<%
-							for (int i = 0; i < net.getNumberNodes(); ++i) {
-									if (i != net.getMyPartition()) {
-						%>
+					<%
+						for (int i = 0; i < net.getNumberNodes(); ++i) {
+							if (i != net.getMyPartition()) {
+					%>
 						<li><%=i%>=<%=net.getPeerLocation(i)%></li>
 						<%
 							}
-								}
+						}
 						%>
 					</ul>
-				</td>
-			</tr>
+					</td>
+				</tr>
+
 		</table>
 	</div>
 	<%

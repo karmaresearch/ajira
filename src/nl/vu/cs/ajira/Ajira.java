@@ -1,9 +1,5 @@
 package nl.vu.cs.ajira;
 
-import ibis.ipl.server.Server;
-import ibis.ipl.server.ServerProperties;
-import ibis.util.TypedProperties;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,6 +7,9 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import nl.vu.cs.ajira.actions.ActionFactory;
 import nl.vu.cs.ajira.buckets.Buckets;
@@ -28,6 +27,7 @@ import nl.vu.cs.ajira.mgmt.MemoryManager;
 import nl.vu.cs.ajira.mgmt.NodeHouseKeeper;
 import nl.vu.cs.ajira.mgmt.StatisticsCollector;
 import nl.vu.cs.ajira.mgmt.WebServer;
+import nl.vu.cs.ajira.net.IbisServer;
 import nl.vu.cs.ajira.net.NetworkLayer;
 import nl.vu.cs.ajira.storage.Factory;
 import nl.vu.cs.ajira.storage.SubmissionCache;
@@ -38,9 +38,6 @@ import nl.vu.cs.ajira.submissions.SubmissionRegistry;
 import nl.vu.cs.ajira.utils.Configuration;
 import nl.vu.cs.ajira.utils.Consts;
 import nl.vu.cs.ajira.utils.Utils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This is the main class that allows the user to interface with the program. It
@@ -75,7 +72,7 @@ public class Ajira {
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param clusterMode
 	 *            whether to start in cluster mode or not.
 	 */
@@ -87,7 +84,7 @@ public class Ajira {
 	 * Returns whether the current instance was the elected server of the
 	 * cluster and therefore can accept submissions. Only one node of the
 	 * cluster will return true to this call.
-	 * 
+	 *
 	 * @return true if it is, false otherwise.
 	 */
 	public boolean amItheServer() {
@@ -99,7 +96,7 @@ public class Ajira {
 	 * parameters of the cluster. This object can be modified before the cluster
 	 * is started in order to change some built-in parameters or add custom
 	 * parameters that should be visible to all the cluster.
-	 * 
+	 *
 	 * @return the configuration file
 	 */
 	public Configuration getConfiguration() {
@@ -151,19 +148,18 @@ public class Ajira {
 		}
 
 		/***** NET *******/
-		NetworkLayer net = NetworkLayer.getInstance();
 		boolean serverMode = true;
 
 		@SuppressWarnings("unchecked")
 		Class<WritableContainer<WritableTuple>> clazz = (Class<WritableContainer<WritableTuple>>) (Class<?>) WritableContainer.class;
-		Factory<WritableContainer<WritableTuple>> bufferFactory = new Factory<WritableContainer<WritableTuple>>(
-				clazz, Consts.TUPLES_CONTAINER_MAX_BUFFER_SIZE);
+		Factory<WritableContainer<WritableTuple>> bufferFactory = new Factory<WritableContainer<WritableTuple>>(clazz,
+				Consts.TUPLES_CONTAINER_MAX_BUFFER_SIZE);
 		MemoryManager.getInstance().registerFactory(bufferFactory);
 
 		String ibisPoolSize = System.getProperty("ibis.pool.size");
-		localMode = !clusterMode
-				&& (ibisPoolSize == null || ibisPoolSize.equals("1"));
+		localMode = !clusterMode && (ibisPoolSize == null || ibisPoolSize.equals("1"));
 
+		NetworkLayer net = null;
 		if (!localMode) {
 			if (log.isDebugEnabled()) {
 				log.debug("Starting the network layer ...");
@@ -171,12 +167,10 @@ public class Ajira {
 
 			/**** START IBIS IF REQUESTED ****/
 			if (conf.getBoolean(Consts.START_IBIS, false)) {
-				TypedProperties properties = new TypedProperties();
-				properties.putAll(System.getProperties());
-				properties.setProperty(ServerProperties.PRINT_EVENTS, "true");
-				new Server(properties);
+				IbisServer.start();
 			}
 
+			net = NetworkLayer.getInstance();
 			net.setBufferFactory(bufferFactory);
 			net.startIbis(clusterMode);
 			ArrayList<WritableContainer<WritableTuple>> l = new ArrayList<WritableContainer<WritableTuple>>(
@@ -195,7 +189,7 @@ public class Ajira {
 		}
 
 		if (log.isInfoEnabled() && serverMode) {
-			log.info("Cluster starting up");
+			log.info("Cluster starting up ...");
 		}
 
 		StatisticsCollector stats = new StatisticsCollector(conf, net);
@@ -204,30 +198,27 @@ public class Ajira {
 
 		/**** OTHER SHARED DATA STRUCTURES ****/
 		CachedFilesMerger merger = new CachedFilesMerger();
-		Buckets tuplesContainer = new Buckets(stats, globalContext, merger,
-				net, bufferFactory);
+		Buckets tuplesContainer = new Buckets(stats, globalContext, merger, net, bufferFactory);
 		ActionFactory ap = new ActionFactory();
 		DataProvider dp = new DataProvider();
 		SubmissionCache cache = new SubmissionCache(net);
 		ChainHandlerManager manager = ChainHandlerManager.getInstance();
 
-		SubmissionRegistry registry = new SubmissionRegistry(net, stats,
-				manager.getChainsToProcess(), tuplesContainer, ap, dp, cache,
-				conf);
+		SubmissionRegistry registry = new SubmissionRegistry(net, stats, manager.getChainsToProcess(), tuplesContainer,
+				ap, dp, cache, conf);
 
 		/**** INIT INPUT LAYERS ****/
 		InputLayerRegistry inputRegistry = new InputLayerRegistry();
 		inputRegistry.registerLayer(new BucketsLayer(), false);
 		inputRegistry.registerLayer(new DummyLayer(), false);
 		inputRegistry.registerLayer(ChainSplitLayer.getInstance(), false);
-		Class<? extends InputLayer> input = InputLayer
-				.getDefaultInputLayerClass(conf);
+		Class<? extends InputLayer> input = InputLayer.getDefaultInputLayerClass(conf);
 		inputRegistry.registerLayer(input.newInstance(), true);
 
 		/**** INIT CONTEXT ****/
 		ChainNotifier notifier = new ChainNotifier();
-		globalContext.init(localMode, inputRegistry, tuplesContainer, registry,
-				manager, notifier, merger, net, stats, ap, dp, cache, conf);
+		globalContext.init(localMode, inputRegistry, tuplesContainer, registry, manager, notifier, merger, net, stats,
+				ap, dp, cache, conf);
 		notifier.init(globalContext);
 
 		/**** START PROCESSING THREADS ****/
@@ -252,10 +243,12 @@ public class Ajira {
 		}
 
 		/**** START COMMUNICATION THREADS ****/
-		if (log.isDebugEnabled()) {
-			log.debug("Starting Sending/receiving threads ...");
+		if (!localMode) {
+			if (log.isDebugEnabled()) {
+				log.debug("Starting Sending/receiving threads ...");
+			}
+			net.startupConnections(globalContext);
 		}
-		net.startupConnections(globalContext);
 
 		/***** LOAD STORAGE *****/
 		if (log.isDebugEnabled()) {
@@ -284,9 +277,9 @@ public class Ajira {
 		thread.start();
 
 		if (serverMode) {
-			net.waitUntilAllReady();
-			log.info("Time to startup the cluster (ms): "
-					+ (System.currentTimeMillis() - time));
+			if (!localMode)
+				net.waitUntilAllReady();
+			log.info("Time to startup the cluster (ms): " + (System.currentTimeMillis() - time));
 		} else {
 			net.signalReady();
 			if (log.isInfoEnabled()) {
@@ -298,7 +291,7 @@ public class Ajira {
 	/**
 	 * This method returns <code>true</code> if this is a single-node run,
 	 * <code>false</code> otherwise.
-	 * 
+	 *
 	 * @return whether this is a single-node run
 	 */
 	public boolean isLocalMode() {
@@ -308,7 +301,7 @@ public class Ajira {
 	/**
 	 * This methods returns the node ID of the machine in the cluster. For
 	 * example, if there are three machines, then it will return 0, 1, or 2.
-	 * 
+	 *
 	 * @return The node ID of the current machine
 	 */
 	public int getMyNodeID() {
@@ -320,7 +313,7 @@ public class Ajira {
 
 	/**
 	 * This method returns the number of nodes in the Ajira cluster.
-	 * 
+	 *
 	 * @return the number of nodes.
 	 */
 	public int getNumberNodes() {
@@ -344,22 +337,21 @@ public class Ajira {
 	/**
 	 * This method is used to launch a job in the cluster. It waits until the
 	 * job is terminated (or has failed).
-	 * 
+	 *
 	 * @param job
 	 *            The specification of the job to launch
 	 * @return The corresponding submission object that contains informations
 	 *         and statistics about the processed job.
 	 */
 	public Submission waitForCompletion(Job job) {
-		Submission sub = globalContext.getSubmissionsRegistry()
-				.waitForCompletion(globalContext, job);
+		Submission sub = globalContext.getSubmissionsRegistry().waitForCompletion(globalContext, job);
 		globalContext.getSubmissionsRegistry().getStatistics(sub);
 		return sub;
 	}
 
 	/**
 	 * Starts Ajira in cluster mode.
-	 * 
+	 *
 	 * @param args
 	 *            cluster arguments.
 	 */
@@ -410,8 +402,7 @@ public class Ajira {
 			// Terminate cluster if this does not work for some reason.
 			OutputStream out = null;
 			try {
-				out = new BufferedOutputStream(new FileOutputStream(
-						clusterInfoFile));
+				out = new BufferedOutputStream(new FileOutputStream(clusterInfoFile));
 			} catch (FileNotFoundException e) {
 				log.error("Could not create cluster info file", e);
 				ajira.shutdown();

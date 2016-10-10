@@ -148,7 +148,7 @@ public class ChainHandler implements Runnable {
 			}
 		}
 
-		if (!actions.isTransferedComputation()) {
+		if (net != null && !actions.isTransferedComputation()) {
 			net.signalChainTerminated(currentChain, actions.getNewChildren());
 		}
 	}

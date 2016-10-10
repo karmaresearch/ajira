@@ -73,6 +73,7 @@ public class ChainExecutor implements ActionContext, ActionOutput {
 	private int transferBucketId;
 	private final boolean localMode;
 	private final int nnodes;
+	private final int myId;
 
 	protected static final Logger log = LoggerFactory
 			.getLogger(ChainExecutor.class);
@@ -80,7 +81,13 @@ public class ChainExecutor implements ActionContext, ActionOutput {
 	public ChainExecutor(ChainHandler handler, Context context) {
 		this.context = context;
 		this.localMode = context.isLocalMode();
-		this.nnodes = context.getNetworkLayer().getNumberNodes();
+		if (this.localMode) {
+			this.nnodes = 1;
+			this.myId = 0;
+		} else {
+			this.nnodes = context.getNetworkLayer().getNumberNodes();
+			this.myId = context.getNetworkLayer().getMyPartition();
+		}
 		this.manager = context.getChainHandlerManager();
 		this.chainsBuffer = manager.getChainsToProcess();
 		this.net = context.getNetworkLayer();
@@ -147,7 +154,7 @@ public class ChainExecutor implements ActionContext, ActionOutput {
 
 	@Override
 	public int getMyNodeId() {
-		return context.getNetworkLayer().getMyPartition();
+		return myId;
 	}
 
 	@Override

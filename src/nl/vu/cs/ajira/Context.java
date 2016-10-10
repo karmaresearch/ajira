@@ -1,7 +1,6 @@
 package nl.vu.cs.ajira;
 
 import ibis.ipl.WriteMessage;
-import ibis.smartsockets.util.ThreadPool;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -184,7 +183,9 @@ public class Context {
 		initializeCounter(Consts.CHAINCOUNTER_NAME, CHAIN_INIT);
 
 		crashedSubmissions = new CrashedSubmissions();
-		ThreadPool.createNew(crashedSubmissions, "Died-submissions-purger");
+		Thread t = new Thread(crashedSubmissions, "Died-submissions-purger");
+		t.start();
+		//ThreadPool.createNew(crashedSubmissions, "");
 	}
 
 	/**

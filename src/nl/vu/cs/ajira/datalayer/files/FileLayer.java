@@ -35,7 +35,11 @@ public class FileLayer extends InputLayer {
 	 */
 	@Override
 	protected void load(Context context) {
-		numberNodes = context.getNetworkLayer().getNumberNodes();
+		if (context.isLocalMode()) {
+			numberNodes = 1;
+		} else {
+			numberNodes = context.getNetworkLayer().getNumberNodes();
+		}
 	}
 
 	/**

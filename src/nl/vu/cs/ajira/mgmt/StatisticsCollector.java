@@ -45,7 +45,10 @@ public class StatisticsCollector {
 	public StatisticsCollector(Configuration conf, NetworkLayer net) {
 		this.net = net;
 		statsEnabled = conf.getBoolean(Consts.STATS_ENABLED, true);
-		myId = net.getMyPartition();
+		if (net == null)
+			myId = 0;
+		else
+			myId = net.getMyPartition();
 	}
 
 	/**

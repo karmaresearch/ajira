@@ -43,8 +43,7 @@ public class WebServer implements Runnable {
 		ServletContextHandler handler = null;
 		while (currentAttempt < MAX_ATTEMPTS) {
 			try {
-				handler = new ServletContextHandler(
-						ServletContextHandler.SESSIONS);
+				handler = new ServletContextHandler(ServletContextHandler.SESSIONS);
 				handler.setContextPath("/");
 				handler.setClassLoader(Thread.currentThread()
 						.getContextClassLoader());

@@ -38,6 +38,7 @@ public class SubmissionRegistry {
 	StatisticsCollector stats;
 	Buckets buckets;
 	NetworkLayer net;
+	int nnodes, myId;
 	Configuration conf;
 
 	Map<Integer, Submission> submissions = new ConcurrentHashMap<Integer, Submission>();
@@ -57,6 +58,13 @@ public class SubmissionRegistry {
 		this.dp = dp;
 		this.conf = conf;
 		this.cache = cache;
+		if (net == null) {
+			this.nnodes = 1;
+			this.myId = 0;
+		} else {
+			this.nnodes = net.getNumberNodes();
+			this.myId = net.getMyPartition();
+		}
 	}
 
 	public void updateCounters(int submissionId, long chainId,
@@ -180,7 +188,7 @@ public class SubmissionRegistry {
 			Chain chain = new Chain();
 			chain.setParentChainId(-1);
 			chain.setInputLayer(InputLayer.DEFAULT_LAYER);
-			chain.setSubmissionNode(context.getNetworkLayer().getMyPartition());
+			chain.setSubmissionNode(myId);
 			chain.setSubmissionId(submissionId);
 			int resultBucket = chain.setActions(new ChainExecutor(null,
 					context, chain), actions);
@@ -222,8 +230,8 @@ public class SubmissionRegistry {
 	}
 
 	public void cleanupSubmission(Submission submission) throws Exception {
-		for (int i = 0; i < net.getNumberNodes(); ++i) {
-			if (i == net.getMyPartition()) {
+		for (int i = 0; i < nnodes; ++i) {
+			if (i == myId) {
 				cache.clearAll(submission.getSubmissionId());
 			} else {
 				WriteMessage msg = net.getMessageToSend(net.getPeerLocation(i),
@@ -267,7 +275,7 @@ public class SubmissionRegistry {
 	}
 
 	public void getStatistics(Submission submission) {
-		if (net.getNumberNodes() > 1) {
+		if (nnodes > 1) {
 			// TODO: to replace with a faster method to retrieve the statistics
 			try {
 				Thread.sleep(Consts.STATISTICS_COLLECTION_INTERVAL);

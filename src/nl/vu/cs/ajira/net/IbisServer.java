@@ -1,17 +1,17 @@
 package nl.vu.cs.ajira.net;
 
-import ibis.ipl.IbisIdentifier;
-import ibis.ipl.server.Server;
-import ibis.ipl.server.ServerProperties;
-import ibis.ipl.support.management.AttributeDescription;
-import ibis.util.TypedProperties;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ibis.ipl.IbisIdentifier;
+import ibis.ipl.server.Server;
+import ibis.ipl.server.ServerProperties;
+import ibis.ipl.support.management.AttributeDescription;
+import ibis.util.TypedProperties;
 
 /**
  * This class can be used as Ibis registry if monitoring is required. In the
@@ -24,6 +24,17 @@ public class IbisServer {
 	static final Logger log = LoggerFactory.getLogger(IbisServer.class);
 
 	public static final int INTERVAL = 1000;
+
+	public static void start() {
+		try {
+			TypedProperties properties = new TypedProperties();
+			properties.putAll(System.getProperties());
+			properties.setProperty(ServerProperties.PRINT_EVENTS, "true");
+			new Server(properties);
+		} catch (Exception e) {
+			log.error("Error starting the server", e);
+		}
+	}
 
 	private static class Shutdown extends Thread {
 		private final Server server;
@@ -50,7 +61,7 @@ public class IbisServer {
 	/**
 	 * Creates a new Server with the properties passed through the arguments.
 	 * For each ibis instance from every pool it sets its arguments.
-	 * 
+	 *
 	 * @param args
 	 *            The properties of the server.
 	 */
@@ -89,14 +100,11 @@ public class IbisServer {
 		// register shutdown hook
 		Runtime.getRuntime().addShutdownHook(new Shutdown(server));
 
-		AttributeDescription cpu = new AttributeDescription(
-				"java.lang:type=OperatingSystem", "ProcessCpuTime");
+		AttributeDescription cpu = new AttributeDescription("java.lang:type=OperatingSystem", "ProcessCpuTime");
 
-		AttributeDescription sentBytes = new AttributeDescription("ibis",
-				"bytesWritten");
+		AttributeDescription sentBytes = new AttributeDescription("ibis", "bytesWritten");
 
-		AttributeDescription receivedBytes = new AttributeDescription("ibis",
-				"bytesRead");
+		AttributeDescription receivedBytes = new AttributeDescription("ibis", "bytesRead");
 
 		while (true) {
 
@@ -108,8 +116,7 @@ public class IbisServer {
 					continue;
 				}
 				int count = 0;
-				IbisIdentifier[] ibises = server.getRegistryService()
-						.getMembers(pool);
+				IbisIdentifier[] ibises = server.getRegistryService().getMembers(pool);
 
 				// for each ibis, print these attributes
 				if (ibises != null) {
@@ -120,23 +127,18 @@ public class IbisServer {
 							map.put(ibis, oldData);
 						}
 						try {
-							Object[] objs = server.getManagementService()
-									.getAttributes(ibis, cpu, sentBytes,
-											receivedBytes);
+							Object[] objs = server.getManagementService().getAttributes(ibis, cpu, sentBytes,
+									receivedBytes);
 							count++;
 							long sent = Long.parseLong(objs[1].toString());
 							long rcvd = Long.parseLong(objs[2].toString());
 							long cputime = Long.parseLong(objs[0].toString());
 							long time = System.currentTimeMillis();
-							double factor = oldData != null ? 1000.0 / (time - oldData.time)
-									: 1.0;
+							double factor = oldData != null ? 1000.0 / (time - oldData.time) : 1.0;
 							if (log.isInfoEnabled()) {
-								log.info(ibis
-										+ " [cpu time, bytes sent, bytes read] = ["
-										+ ((cputime - oldData.cputm) / 1.0e9)
-										* factor + ", " + (sent - oldData.sent)
-										* factor + ", " + (rcvd - oldData.rcvd)
-										* factor + "]");
+								log.info(ibis + " [cpu time, bytes sent, bytes read] = ["
+										+ ((cputime - oldData.cputm) / 1.0e9) * factor + ", "
+										+ (sent - oldData.sent) * factor + ", " + (rcvd - oldData.rcvd) * factor + "]");
 							}
 							oldData.sent = sent;
 							oldData.rcvd = rcvd;

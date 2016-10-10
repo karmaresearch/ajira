@@ -64,10 +64,15 @@ public class Buckets {
 		this.fb = fb;
 		this.stats = stats;
 		this.merger = merger;
-		this.myPartition = net.getMyPartition();
+		if (net == null) {
+			this.myPartition = 0;
+			activeTransfers = new Map[1];
+		} else {
+			this.myPartition = net.getMyPartition();
+			activeTransfers = new Map[net.getNumberNodes()];
+		}
 		this.net = net;
 		this.context = context;
-		activeTransfers = new Map[net.getNumberNodes()];
 		for (int i = 0; i < activeTransfers.length; ++i) {
 			activeTransfers[i] = new HashMap<Long, Buckets.TransferInfo>();
 		}
