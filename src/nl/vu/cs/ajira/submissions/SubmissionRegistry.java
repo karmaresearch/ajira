@@ -1,12 +1,14 @@
 package nl.vu.cs.ajira.submissions;
 
-import ibis.ipl.WriteMessage;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ibis.ipl.WriteMessage;
 import nl.vu.cs.ajira.Context;
 import nl.vu.cs.ajira.actions.ActionFactory;
 import nl.vu.cs.ajira.actions.ActionSequence;
@@ -23,9 +25,6 @@ import nl.vu.cs.ajira.storage.Factory;
 import nl.vu.cs.ajira.storage.SubmissionCache;
 import nl.vu.cs.ajira.utils.Configuration;
 import nl.vu.cs.ajira.utils.Consts;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SubmissionRegistry {
 
@@ -46,10 +45,8 @@ public class SubmissionRegistry {
 	SubmissionCache cache;
 	int submissionCounter = 0;
 
-	public SubmissionRegistry(NetworkLayer net, StatisticsCollector stats,
-			Container<Chain> chainsToProcess, Buckets buckets,
-			ActionFactory ap, DataProvider dp, SubmissionCache cache,
-			Configuration conf) {
+	public SubmissionRegistry(NetworkLayer net, StatisticsCollector stats, Container<Chain> chainsToProcess,
+			Buckets buckets, ActionFactory ap, DataProvider dp, SubmissionCache cache, Configuration conf) {
 		this.net = net;
 		this.stats = stats;
 		this.chainsToProcess = chainsToProcess;
@@ -67,18 +64,14 @@ public class SubmissionRegistry {
 		}
 	}
 
-	public void updateCounters(int submissionId, long chainId,
-			long parentChainId, int nchildren, long[] additionalChainCounters,
-			int[] additionalChainValues) {
+	public void updateCounters(int submissionId, long chainId, long parentChainId, int nchildren,
+			long[] additionalChainCounters, int[] additionalChainValues) {
 		Submission sub = getSubmission(submissionId);
 
 		if (log.isDebugEnabled()) {
-			log.debug("updateCounters: submissionId = " + submissionId
-					+ ", chainId = " + chainId + ", parentChainId = "
-					+ parentChainId + ", nchildren = " + nchildren
-					+ ", additionalChainCounters="
-					+ Arrays.toString(additionalChainCounters)
-					+ ", additionalChainValues="
+			log.debug("updateCounters: submissionId = " + submissionId + ", chainId = " + chainId + ", parentChainId = "
+					+ parentChainId + ", nchildren = " + nchildren + ", additionalChainCounters="
+					+ Arrays.toString(additionalChainCounters) + ", additionalChainValues="
 					+ Arrays.toString(additionalChainValues));
 		}
 		synchronized (sub) {
@@ -134,16 +127,13 @@ public class SubmissionRegistry {
 			}
 
 			if (log.isDebugEnabled()) {
-				log.debug("rootChainsReceived = " + sub.rootChainsReceived
-						+ ", mainRootReceived = " + sub.mainRootReceived
-						+ ", monitors.size() = " + sub.monitors.size()
-						+ " monitor content=" + sub.monitors);
+				log.debug("rootChainsReceived = " + sub.rootChainsReceived + ", mainRootReceived = "
+						+ sub.mainRootReceived + ", monitors.size() = " + sub.monitors.size() + " monitor content="
+						+ sub.monitors);
 			}
-			if (sub.rootChainsReceived == 0 && sub.mainRootReceived
-					&& sub.monitors.size() == 0) {
+			if (sub.rootChainsReceived == 0 && sub.mainRootReceived && sub.monitors.size() == 0) {
 				if (sub.assignedBucket != -1) {
-					Bucket bucket = buckets.getExistingBucket(submissionId,
-							sub.assignedBucket);
+					Bucket bucket = buckets.getExistingBucket(submissionId, sub.assignedBucket);
 					bucket.waitUntilFinished();
 				}
 
@@ -190,18 +180,15 @@ public class SubmissionRegistry {
 			chain.setInputLayer(InputLayer.DEFAULT_LAYER);
 			chain.setSubmissionNode(myId);
 			chain.setSubmissionId(submissionId);
-			int resultBucket = chain.setActions(new ChainExecutor(null,
-					context, chain), actions);
+			int resultBucket = chain.setActions(new ChainExecutor(null, context, chain), actions);
 			if (resultBucket != -1) {
 				sub.assignedBucket = resultBucket;
 			}
 
 			JobProperties props = job.getProperties();
 			if (props != null && props.size() != 0) {
-				context.getSubmissionCache().putObjectInCache(submissionId,
-						"job-properties", props);
-				context.getSubmissionCache().broadcastCacheObject(submissionId,
-						"job-properties");
+				context.getSubmissionCache().putObjectInCache(submissionId, "job-properties", props);
+				context.getSubmissionCache().broadcastCacheObject(submissionId, "job-properties");
 			}
 
 			// If local
@@ -217,6 +204,7 @@ public class SubmissionRegistry {
 			sub.setFinished(Consts.STATE_INIT_FAILED);
 			sub.setException(e);
 		}
+		log.info("Job " + submissionId + " has been submitted. Waiting for completion ...");
 
 		return sub;
 	}
@@ -234,8 +222,7 @@ public class SubmissionRegistry {
 			if (i == myId) {
 				cache.clearAll(submission.getSubmissionId());
 			} else {
-				WriteMessage msg = net.getMessageToSend(net.getPeerLocation(i),
-						NetworkLayer.nameMgmtReceiverPort);
+				WriteMessage msg = net.getMessageToSend(net.getPeerLocation(i), NetworkLayer.nameMgmtReceiverPort);
 				msg.writeByte((byte) 8);
 				msg.writeInt(submission.getSubmissionId());
 				msg.finish();
@@ -284,8 +271,7 @@ public class SubmissionRegistry {
 			}
 		}
 
-		submission.counters = stats.removeCountersSubmission(submission
-				.getSubmissionId());
+		submission.counters = stats.removeCountersSubmission(submission.getSubmissionId());
 	}
 
 	public Collection<Submission> getAllSubmissions() {
